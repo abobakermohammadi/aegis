@@ -2,6 +2,14 @@
 
 Aegis is early-stage. The roadmap is intentionally evidence-first: new claims should follow reproducible implementation and measurement, not precede them.
 
+## Recently shipped
+
+### Machine-readable CI reports
+
+Aegis now includes `aegis-engine/aegis_ci.py`, a project-scoped JSON adapter for CI systems and coding agents. It exposes mission/gate status, doctor health, open defects, unresolved blockers, git/deploy state, checkpoint counts, and regression-memory counts without requiring consumers to scrape terminal output.
+
+Fail-closed modes can require completion readiness and healthy mission state through process exit codes. End-to-end coverage includes project paths containing spaces, stale-evidence behavior, missing-state errors, and successful completion gates.
+
 ## Near term
 
 ### 1. Run independent agent A/B benchmarks
@@ -26,7 +34,8 @@ Exercise Aegis on real repository maintenance tasks:
 - regression-test generation from confirmed failures;
 - pull-request verification against explicit evidence gates;
 - release checklists and evidence re-runs;
-- interruption/resume across multi-session maintenance work.
+- interruption/resume across multi-session maintenance work;
+- consume `aegis_ci.py` reports in real CI/agent workflows instead of parsing human-readable output.
 
 Automation should assist review, not silently merge or publish changes.
 
@@ -60,7 +69,6 @@ For every behavior-changing release:
 - External contributors running and publishing independent benchmark results.
 - More compact mission-state handoffs for very large repositories.
 - Better evidence scoping so unrelated changes do not invalidate useful proof.
-- Optional machine-readable reports for CI and maintainer automation.
 - Broader host integration without weakening local-first operation or evidence requirements.
 
 ## Non-goals
