@@ -29,11 +29,11 @@ LOCK_STALE_SECONDS = 30.0
 KINDS_BLOCKER = ("credentials", "decision", "failure", "inconvenience")
 PHASES = ("discover", "design", "build", "verify", "ship", "done")
 
-# Process-local provenance for dicts returned by load(). This deliberately is
-# not serialized into mission/checkpoint state: an explicit checkpoint restore
-# produces a fresh dict and is allowed to replace current state, while a stale
-# read-modify-write snapshot from load() is rejected if disk changed meanwhile.
-_LOADED_FINGERPRINTS: dict[int, str] = {}
+# Keep a strong reference with each fingerprint so CPython cannot recycle a
+# loaded dict's id for an unrelated fresh state in a long-lived process. CLI
+# processes are short-lived, so this bounded provenance cache is tiny in
+# normal use. It is deliberately not serialized into mission/checkpoint data.
+_LOADED_FINGERPRINTS: dict[int, tuple[dict, str]] = {}
 
 
 class StateError(Exception):
@@ -214,7 +214,7 @@ def load(project: Path, migrate_on_load: bool = True) -> tuple[dict, list[str]]:
     problems = validate(state)
     if problems:
         raise StateError("state validation failed:\n  - " + "\n  - ".join(problems))
-    _LOADED_FINGERPRINTS[id(state)] = _fingerprint_bytes(raw_bytes)
+    _LOADED_FINGERPRINTS[id(state)] = (state, _fingerprint_bytes(raw_bytes))
     return state, notes
 
 
@@ -247,15 +247,7 @@ def _acquire_write_lock(sdir: Path) -> Path:
 
 
 def save(project: Path, state: dict) -> None:
-    """Atomically persist state; reject stale snapshots returned by load().
-
-    A dict returned by :func:`load` is associated in-process with the exact
-    bytes it came from. Under the writer lock, save compares that fingerprint
-    with disk. If another process saved first, this writer fails closed and
-    must reload. Fresh dicts, including validated checkpoint snapshots used by
-    explicit restore, have no loaded fingerprint and preserve rollback
-    semantics.
-    """
+    """Atomically persist state; reject stale snapshots returned by load()."""
     problems = validate(state)
     if problems:
         raise StateError("refusing to save invalid state:\n  - " + "\n  - ".join(problems))
@@ -269,7 +261,8 @@ def save(project: Path, state: dict) -> None:
         path = state_path(project)
         if path.is_symlink():
             raise StateError(f"{path} is a symlink; refusing to overwrite (possible attack)")
-        expected = _LOADED_FINGERPRINTS.get(id(state))
+        loaded = _LOADED_FINGERPRINTS.get(id(state))
+        expected = loaded[1] if loaded is not None and loaded[0] is state else None
         current = _disk_fingerprint(path)
         if expected is not None and current != expected:
             raise StateError(
@@ -289,7 +282,7 @@ def save(project: Path, state: dict) -> None:
             shutil.copyfile(path, path.with_suffix(".json.bak"))
         os.replace(tmp_name, path)
         tmp_name = None
-        _LOADED_FINGERPRINTS[id(state)] = _fingerprint_bytes(payload_bytes)
+        _LOADED_FINGERPRINTS[id(state)] = (state, _fingerprint_bytes(payload_bytes))
     except OSError as exc:
         raise StateError(f"cannot write {state_path(project)}: {exc}") from exc
     finally:
