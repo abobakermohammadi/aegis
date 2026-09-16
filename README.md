@@ -92,12 +92,15 @@ See [`benchmarks/PROTOCOL.md`](benchmarks/PROTOCOL.md) for contamination rules, 
 
 Aegis is an **active, early-stage open-source project**. External adoption is still early, so the repository does not inflate usage claims. The current value is the shipped implementation, reproducible verification, explicit security model, and benchmark protocol. Contributions and independent benchmark runs are welcome.
 
+The evidence-first development plan is in [`ROADMAP.md`](ROADMAP.md), including independent external-agent A/B benchmarks, real maintainer-workflow dogfooding, broader deterministic benchmark coverage, portability work, and release hygiene.
+
 Primary maintainer: **Abobaker Mohammadi** ([@abobakermohammadi](https://github.com/abobakermohammadi)). Maintainer responsibilities are documented in [`MAINTAINERS.md`](MAINTAINERS.md).
 
 ## Contributing and security
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution rules and verification workflow.
 - [`SECURITY.md`](SECURITY.md) — threat model, trust boundaries, and private vulnerability reporting.
+- [`ROADMAP.md`](ROADMAP.md) — evidence-first development priorities.
 - [`CHANGELOG.md`](CHANGELOG.md) — versioned project history.
 - [`QUICKSTART.md`](QUICKSTART.md) — five-minute first-success path.
 
