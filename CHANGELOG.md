@@ -8,11 +8,14 @@ All notable changes to Aegis. Format follows Keep a Changelog; versioning is sem
 - Dedicated Aegis project website source under `docs/`, ready for GitHub Pages from `main` / `docs`.
 - GitHub Actions CI running the repository verifier on pushes and pull requests.
 - Maintainer, roadmap, release-process, issue-template, CODEOWNERS, and pull-request guidance for reproducible external contributions.
+- **Machine-readable CI report** (`aegis-engine/aegis_ci.py`) with stable JSON output for mission/gate state, doctor health, open work, git/deploy state, checkpoints, and regression-memory counts.
+- Fail-closed CI modes: `--require-complete` and `--require-healthy`, with explicit exit codes and end-to-end coverage for stale evidence, missing state, successful gates, and project paths containing spaces.
 
 ### Changed
 - Repository and website links now use `abobakermohammadi/aegis` as the canonical public project.
 - Contribution guidance now requires reproducible evidence for behavior changes and documents the `/aegis/` Pages base path.
 - Reviewer-facing documentation now explicitly labels Aegis as early-stage and avoids inflated adoption or benchmark claims.
+- Quickstart and README now document the JSON CI/agent automation contract.
 
 ## [2.1.0] — 2026-08-25
 
