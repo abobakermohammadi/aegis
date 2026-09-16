@@ -62,20 +62,41 @@ python3 ~/.agents/aegis/aegis.py next
 Then capture real evidence instead of free-text completion claims:
 
 ```sh
-python3 ~/.agents/aegis/aegis.py evidence add --run "python -m pytest"
+python3 ~/.agents/aegis/aegis.py evidence add --run "python -m pytest" -c C1
 python3 ~/.agents/aegis/aegis.py status
 python3 ~/.agents/aegis/aegis.py verify --rerun
 ```
 
 If relevant code changes later, git-aware evidence can become stale and the release gate must be satisfied again.
 
-## 5. Hand the skills to an agent
+## 5. Get a machine-readable CI report
+
+For automation, use the dedicated JSON adapter from the repository checkout:
+
+```sh
+python3 aegis-engine/aegis_ci.py --project /path/to/project --pretty
+```
+
+The report includes mission identity, derived gate status, doctor health, open defects, unresolved blockers, git state, deploy state, checkpoint count, and regression-memory count. It is project-scoped, so paths containing spaces are supported without relying on the caller's current working directory.
+
+To make a CI job fail closed unless the mission is actually ready to complete:
+
+```sh
+python3 aegis-engine/aegis_ci.py \
+  --project /path/to/project \
+  --require-complete \
+  --require-healthy
+```
+
+Exit `0` means the requested conditions hold, exit `1` means a report was produced but a required condition failed, and exit `2` means the mission state is missing or invalid. Standard output remains JSON for machine consumers.
+
+## 6. Hand the skills to an agent
 
 Point your agent host at the installed skills directory (for example `~/.agents/skills`, or the equivalent directory for your host), then invoke a skill by name.
 
 Expected behavior is defined in each `SKILL.md`; the deterministic tools remain independently runnable and testable outside the model.
 
-## 6. Inspect the reliability benchmark
+## 7. Inspect the reliability benchmark
 
 Read [`benchmarks/PROTOCOL.md`](benchmarks/PROTOCOL.md). It defines two broken-project missions, objective scorers, false-completion detection, an interruption/resume modifier, and contamination rules for comparing the same coding agent with and without Aegis.
 
