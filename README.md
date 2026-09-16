@@ -76,13 +76,34 @@ See [`QUICKSTART.md`](QUICKSTART.md) for the first verified run.
 The mission engine treats free-text status as information, not proof. Required gates are satisfied only by fresh passing evidence. Evidence can become stale after relevant git changes, and `aegis complete` refuses completion while required gates or blocking decisions remain unresolved.
 
 ```sh
-python3 ~/.agents/aegis/aegis.py evidence add --run "python -m pytest"
+python3 ~/.agents/aegis/aegis.py evidence add --run "python -m pytest" -c C1
 python3 ~/.agents/aegis/aegis.py verify --rerun
 python3 ~/.agents/aegis/aegis.py status
 python3 ~/.agents/aegis/aegis.py complete
 ```
 
 The engine also rejects trivial evidence patterns in diagnostics and redacts secret-like strings before persisting captured output. See [`aegis-engine/README.md`](aegis-engine/README.md) and [`SECURITY.md`](SECURITY.md).
+
+## Machine-readable CI gate
+
+Aegis also ships a project-scoped JSON adapter for CI systems and coding agents that should not scrape human terminal output:
+
+```sh
+python3 aegis-engine/aegis_ci.py --project /path/to/project --pretty
+```
+
+The schema reports mission identity, derived gate status, doctor health, open defects, unresolved blockers, git state, deployment state, checkpoints, and regression-memory counts.
+
+For fail-closed automation:
+
+```sh
+python3 aegis-engine/aegis_ci.py \
+  --project /path/to/project \
+  --require-complete \
+  --require-healthy
+```
+
+Exit `0` means the requested conditions hold, exit `1` means the report was produced but a required condition failed, and exit `2` means the mission state is missing or invalid. Paths with spaces are covered by the end-to-end test suite.
 
 ## Benchmark design
 
