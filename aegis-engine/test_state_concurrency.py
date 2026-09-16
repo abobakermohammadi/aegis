@@ -26,10 +26,9 @@ class StateConcurrencyTests(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmp.cleanup()
 
-    def test_stale_snapshot_cannot_overwrite_newer_state(self) -> None:
+    def test_stale_loaded_snapshot_cannot_overwrite_newer_state(self) -> None:
         first, _ = state_mod.load(self.project)
         stale, _ = state_mod.load(self.project)
-        self.assertEqual(first["_revision"], stale["_revision"])
 
         first["workstreams"].append({
             "id": "W1", "title": "first writer", "impact": 2, "effort": 2,
@@ -46,27 +45,26 @@ class StateConcurrencyTests(unittest.TestCase):
 
         current, _ = state_mod.load(self.project)
         self.assertEqual([w["title"] for w in current["workstreams"]], ["first writer"])
-        self.assertGreater(current["_revision"], stale["_revision"])
 
-    def test_sequential_saves_advance_revision(self) -> None:
+    def test_same_loaded_object_can_save_sequentially(self) -> None:
         state, _ = state_mod.load(self.project)
-        before = state["_revision"]
+        state["next_hint"] = "one"
         state_mod.save(self.project, state)
-        self.assertEqual(state["_revision"], before + 1)
+        state["next_hint"] = "two"
         state_mod.save(self.project, state)
-        self.assertEqual(state["_revision"], before + 2)
-        disk = json.loads((self.project / "aegis/mission.json").read_text())
-        self.assertEqual(disk["_revision"], before + 2)
+        current, _ = state_mod.load(self.project)
+        self.assertEqual(current["next_hint"], "two")
 
-    def test_legacy_state_without_revision_upgrades_on_first_save(self) -> None:
-        path = self.project / "aegis/mission.json"
-        raw = json.loads(path.read_text())
-        raw.pop("_revision", None)
-        path.write_text(json.dumps(raw), encoding="utf-8")
-        state, _ = state_mod.load(self.project)
-        self.assertEqual(state["_revision"], 0)
-        state_mod.save(self.project, state)
-        self.assertEqual(state["_revision"], 1)
+    def test_fresh_validated_snapshot_preserves_explicit_restore_semantics(self) -> None:
+        old, _ = state_mod.load(self.project)
+        checkpoint_like = json.loads(json.dumps(old))
+        old["next_hint"] = "newer work"
+        state_mod.save(self.project, old)
+        # A checkpoint snapshot is deserialized into a fresh dict, not a stale
+        # loaded object. Explicit restore is therefore still allowed.
+        state_mod.save(self.project, checkpoint_like)
+        restored, _ = state_mod.load(self.project)
+        self.assertEqual(restored["next_hint"], "")
 
     def test_stale_writer_lock_is_recovered(self) -> None:
         lock = self.project / "aegis" / state_mod.LOCK_DIR_NAME
