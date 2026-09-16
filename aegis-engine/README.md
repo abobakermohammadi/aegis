@@ -13,6 +13,7 @@ Long agent missions can fail through lost state, goal drift, stale verification,
 - **Checkpoints survive state loss.** Each checkpoint embeds a full state snapshot with a checksum. If `mission.json` is deleted or corrupt, `aegis restore` can rebuild from the checkpoint.
 - **Regression memory is actionable.** Recorded regressions include guarded paths/keywords so relevant past failures can be surfaced when similar files change again.
 - **Evidence can be re-run.** `aegis verify --rerun` executes stored evidence commands again and surfaces disagreement instead of trusting a historical result forever.
+- **Automation gets structured state.** `aegis_ci.py` emits a project-scoped JSON report so CI systems and coding agents do not need to scrape terminal prose.
 
 ## Commands
 
@@ -23,6 +24,36 @@ deploy doctor report archive regressions-for
 ```
 
 Every command supports `--help`; `--project <dir>` operates on another directory. Exit codes distinguish success, failed checks, and invalid input/state.
+
+## Machine-readable CI/agent report
+
+Use the dedicated adapter when another tool needs deterministic structured output:
+
+```sh
+python3 aegis-engine/aegis_ci.py --project /path/to/project --pretty
+```
+
+The JSON schema currently reports:
+
+- mission id, goal, phase, and release;
+- required gate totals, per-criterion derived status, and completion readiness;
+- `doctor` health and findings;
+- open defects and unresolved blockers;
+- checkpoint and regression-memory counts;
+- git HEAD and dirty files;
+- deployment state;
+- state-load notes.
+
+Fail closed in automation with:
+
+```sh
+python3 aegis-engine/aegis_ci.py \
+  --project /path/to/project \
+  --require-complete \
+  --require-healthy
+```
+
+Exit codes are intentionally simple: `0` means requested conditions hold, `1` means a valid report was produced but a requested gate failed, and `2` means mission state is missing or invalid. Standard output remains JSON so callers can inspect the reason instead of parsing human text.
 
 ## State model
 
@@ -54,7 +85,7 @@ Run the engine suite directly:
 python3 -m unittest discover aegis-engine -p "test_*.py"
 ```
 
-The automated coverage exercises the mission lifecycle, git-aware staleness, completion refusal, corruption/repair, checkpoint integrity and state-loss recovery, secret redaction, clipping, symlink attacks, concurrent writers, unicode/space paths, detached HEAD behavior, migrations, regression matching, evidence re-runs, and false-completion defenses.
+The automated coverage exercises the mission lifecycle, git-aware staleness, completion refusal, corruption/repair, checkpoint integrity and state-loss recovery, secret redaction, clipping, symlink attacks, concurrent writers, unicode/space paths, detached HEAD behavior, migrations, regression matching, evidence re-runs, false-completion defenses, and machine-readable CI reporting.
 
 Run the whole repository verifier with:
 
