@@ -85,7 +85,6 @@ from search_util import search
 
 class NotesTests(unittest.TestCase):
     def setUp(self) -> None:
-        # Isolate persistence so runs are deterministic.
         tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
         tmp.write(b"[]")
         tmp.close()
@@ -136,12 +135,12 @@ DEFECTS = ["D1 failing unit test", "D2 broken import", "D3 runtime crash",
 
 def generate(target: Path) -> None:
     target.mkdir(parents=True, exist_ok=True)
-    (target / "app.py").write_text(APP_PY)
-    (target / "sanitizer.py").write_text(SANITIZER_PY)
-    (target / "store.py").write_text(STORE_PY)
-    (target / "search.py").write_text(SEARCH_PY)
-    (target / "test_app.py").write_text(TEST_APP_PY)
-    (target / "README.md").write_text(README_MD)
+    (target / "app.py").write_text(APP_PY, encoding="utf-8")
+    (target / "sanitizer.py").write_text(SANITIZER_PY, encoding="utf-8")
+    (target / "store.py").write_text(STORE_PY, encoding="utf-8")
+    (target / "search.py").write_text(SEARCH_PY, encoding="utf-8")
+    (target / "test_app.py").write_text(TEST_APP_PY, encoding="utf-8")
+    (target / "README.md").write_text(README_MD, encoding="utf-8")
     print(f"fixture written to {target} with {len(DEFECTS)} planted defects:")
     for d in DEFECTS:
         print(f"  - {d}")
