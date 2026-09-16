@@ -13,16 +13,31 @@ python3 -m unittest discover usage-optimizer/scripts -p "test_*.py" || fail=1
 echo "== python: second-brain-context graph builder =="
 python3 -m unittest discover second-brain-context/scripts -p "test_*.py" || fail=1
 
-echo "== installer: clean-environment smoke =="
+echo "== python: cross-platform installer =="
+python3 -m unittest discover installer-tests -p "test_*.py" || fail=1
+
+echo "== installer: POSIX clean-environment smoke =="
 smoke=$(mktemp -d)
 if HOME="$smoke/home" ./install.sh --target "$smoke/home/skills" >/dev/null 2>&1 \
    && [ -f "$smoke/home/skills/aegis-ceo-skills/SKILL.md" ]; then
-  echo "installer smoke: OK"
+  echo "POSIX installer smoke: OK"
 else
-  echo "installer smoke: FAILED" >&2
+  echo "POSIX installer smoke: FAILED" >&2
   fail=1
 fi
 rm -rf "$smoke"
+
+echo "== installer: Python clean-environment smoke =="
+py_smoke=$(mktemp -d)
+if python3 install.py --target "$py_smoke/skills" --engine-target "$py_smoke/engine" >/dev/null 2>&1 \
+   && [ -f "$py_smoke/skills/aegis-ceo-skills/SKILL.md" ] \
+   && [ -f "$py_smoke/engine/aegis.py" ]; then
+  echo "Python installer smoke: OK"
+else
+  echo "Python installer smoke: FAILED" >&2
+  fail=1
+fi
+rm -rf "$py_smoke"
 
 echo "== docs: public project site source =="
 for file in docs/index.html docs/404.html docs/sitemap.xml docs/.nojekyll; do

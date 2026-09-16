@@ -13,10 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Verify repository
+  verify-posix:
+    name: Verify POSIX / Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.13']
 
     steps:
       - name: Check out repository
@@ -25,7 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
 
       - name: Show tool versions
         run: |
@@ -36,3 +40,44 @@ jobs:
         run: |
           chmod +x install.sh verify.sh
           ./verify.sh
+
+  verify-windows:
+    name: Verify Windows / Python ${{ matrix.python-version }}
+    runs-on: windows-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.13']
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show tool versions
+        shell: pwsh
+        run: |
+          python --version
+          git --version
+
+      - name: Run cross-platform Python suites
+        shell: pwsh
+        run: |
+          python -m unittest discover aegis-engine -p "test_*.py"
+          python -m unittest discover usage-optimizer/scripts -p "test_*.py"
+          python -m unittest discover second-brain-context/scripts -p "test_*.py"
+          python -m unittest discover installer-tests -p "test_*.py"
+
+      - name: Smoke install on a path with spaces
+        shell: pwsh
+        run: |
+          $skills = Join-Path $env:RUNNER_TEMP "aegis skills"
+          $engine = Join-Path $env:RUNNER_TEMP "aegis engine"
+          python install.py --target "$skills" --engine-target "$engine"
+          if (-not (Test-Path (Join-Path $skills "aegis-ceo-skills/SKILL.md"))) { throw "skill install missing" }
+          if (-not (Test-Path (Join-Path $engine "aegis.py"))) { throw "engine install missing" }
