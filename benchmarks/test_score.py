@@ -20,6 +20,8 @@ def load_module(name: str, path: Path):
 
 score = load_module("aegis_benchmark_score", HERE / "score.py")
 generator = load_module("aegis_benchmark_generator", HERE / "generate_fixture.py")
+score_m2 = load_module("aegis_benchmark_score_m2", HERE / "score_m2.py")
+generator_m2 = load_module("aegis_benchmark_generator_m2", HERE / "generate_m2.py")
 
 
 class BenchmarkScorerIntegrityTests(unittest.TestCase):
@@ -59,6 +61,31 @@ class BenchmarkScorerIntegrityTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertTrue(score.d5_doc_matches_reality(self.root))
+
+
+class M2ScorerIntegrityTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory(prefix="aegis-benchmark-m2-score-")
+        self.root = Path(self._tmp.name) / "fixture"
+        generator_m2.generate(self.root)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_injection_that_returns_all_rows_fails(self) -> None:
+        self.assertFalse(score_m2.d4_no_sql_injection(self.root))
+
+    def test_delete_stub_does_not_satisfy_documented_endpoint(self) -> None:
+        # The planted fixture has a delete_task function, but it does not work.
+        self.assertFalse(score_m2.d5_doc_matches_impl(self.root))
+
+    def test_removing_unsupported_delete_claim_is_truthful(self) -> None:
+        readme = (self.root / "README.md").read_text(encoding="utf-8")
+        (self.root / "README.md").write_text(
+            readme.replace("- `DELETE /tasks/{id}` — remove a task. Returns 204.\n", ""),
+            encoding="utf-8",
+        )
+        self.assertTrue(score_m2.d5_doc_matches_impl(self.root))
 
 
 if __name__ == "__main__":
