@@ -3,6 +3,8 @@
 [![CI](https://github.com/abobakermohammadi/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/abobakermohammadi/aegis/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**Website:** https://abobakermohammadi.github.io/aegis/
+
 **A reliability layer for long-horizon AI coding agents.** Aegis turns a coding mission into durable state, reproducible evidence, release gates, regression memory, and deterministic verification so an agent cannot call work complete just because it says it is done.
 
 The mission engine and benchmark harness are local-first and model/provider-independent. The optional agent skills are plain Markdown contracts plus local scripts and can be adapted to hosts that support local skill folders. The deterministic Python tooling targets Python 3.9+ stdlib and has no required account, daemon, hosted service, or telemetry.
