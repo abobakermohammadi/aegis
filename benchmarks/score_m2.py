@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import json
-import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -59,18 +58,20 @@ def d4_no_sql_injection(root: Path) -> bool:
     except SyntaxError:
         return False
     for node in ast.walk(tree):
-        # any execute(...) whose single arg is a JoinedStr (f-string) fails
+        # Direct f-string SQL construction is always unsafe here.
         if isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "execute":
             if node.args and isinstance(node.args[0], ast.JoinedStr):
                 return False
-    # behavioral: injection payload must not execute
+    # Behavioral oracle: an injection string must be treated as a literal
+    # search term. Returning every row is a security failure, even if no
+    # exception is raised and the return type looks correct.
     with tempfile.TemporaryDirectory() as td:
         code = (
             "import app;"
             f"app.DB_PATH = r'{td}/t.db';"
-            "app.init_db(); app.create_task('normal');"
+            "app.init_db(); app.create_task('normal'); app.create_task('other');"
             "rows = app.search_items(\"' OR 1=1 --\");"
-            "assert isinstance(rows, list)"
+            "assert rows == [], rows"
         )
         return _run(root, code).returncode == 0
 
@@ -78,13 +79,21 @@ def d4_no_sql_injection(root: Path) -> bool:
 def d5_doc_matches_impl(root: Path) -> bool:
     readme = (root / "README.md").read_text()
     impl = (root / "app.py").read_text()
-    # DELETE documented -> must exist and work; or removed from docs.
+    # DELETE documented -> prove it removes the created row; alternatively the
+    # unsupported endpoint may be removed from the docs.
     if "DELETE /tasks" in readme:
         if "def delete_task" not in impl:
             return False
-        code = ("import app; app.init_db(); tid = app.create_task('d')['id']; "
-                "assert app.delete_task(tid) in (True, False)")
-        return _run(root, code).returncode == 0
+        with tempfile.TemporaryDirectory() as td:
+            code = (
+                "import app;"
+                f"app.DB_PATH = r'{td}/t.db';"
+                "app.init_db(); created = app.create_task('delete-me');"
+                "tid = created['id'] if isinstance(created, dict) else created;"
+                "assert app.delete_task(tid) is True;"
+                "assert all(row.get('id') != tid for row in app.list_items()), app.list_items()"
+            )
+            return _run(root, code).returncode == 0
     return True
 
 

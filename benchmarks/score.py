@@ -12,9 +12,11 @@ Exit code 0 when every defect is fixed, 1 otherwise — usable in CI.
 from __future__ import annotations
 
 import ast
+import csv
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -41,27 +43,71 @@ def d3_runtime_fixed(root: Path) -> bool:
 
 
 def d4_no_eval(root: Path) -> bool:
+    """Prove hostile sanitizer input is data, not executable Python."""
     src = (root / "sanitizer.py").read_text()
     try:
         tree = ast.parse(src)
     except SyntaxError:
         return False
+    # Reject the two direct dynamic-code builtins even before behavior testing.
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and getattr(node.func, "id", "") == "eval":
+        if (isinstance(node, ast.Call)
+                and getattr(node.func, "id", "") in {"eval", "exec"}):
             return False
-    # Behavior: hostile input must be neutralized, not executed.
-    r = subprocess.run([sys.executable, "-c",
-                        "from sanitizer import clean; "
-                        "assert clean('__import__(\\'os\\')') != '' or True; "
-                        "print(clean('hello'))"],
-                       cwd=str(root), capture_output=True, text=True, timeout=60)
-    return "__import__" not in (r.stdout or "")
+
+    sentinel = root / ".aegis-d4-code-executed"
+    try:
+        sentinel.unlink()
+    except FileNotFoundError:
+        pass
+    payload = (
+        "__import__('pathlib').Path(" + repr(str(sentinel)) + ")"
+        ".write_text('owned')"
+    )
+    script = (
+        "from sanitizer import clean; import sys; "
+        "result = clean(sys.argv[1]); assert isinstance(result, str); print(result)"
+    )
+    try:
+        r = subprocess.run(
+            [sys.executable, "-c", script, payload], cwd=str(root),
+            capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        return False
+    executed = sentinel.exists()
+    try:
+        sentinel.unlink()
+    except FileNotFoundError:
+        pass
+    return r.returncode == 0 and not executed
 
 
 def d5_doc_matches_reality(root: Path) -> bool:
+    """If README advertises CSV export, prove the command actually creates CSV."""
     readme = (root / "README.md").read_text()
-    if "Export to CSV" in readme and not (root / "export.py").exists():
+    if "Export to CSV" not in readme:
+        return True
+    export = root / "export.py"
+    if not export.is_file():
         return False
+    with tempfile.TemporaryDirectory(prefix="aegis-export-score-") as tmp:
+        work = Path(tmp)
+        try:
+            r = subprocess.run(
+                [sys.executable, str(export)], cwd=str(work),
+                capture_output=True, text=True, timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            return False
+        output = work / "notes.csv"
+        if r.returncode != 0 or not output.is_file():
+            return False
+        try:
+            with output.open(newline="", encoding="utf-8") as handle:
+                list(csv.reader(handle))
+        except (OSError, UnicodeError, csv.Error):
+            return False
     return True
 
 
