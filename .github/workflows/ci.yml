@@ -69,6 +69,7 @@ jobs:
         shell: pwsh
         run: |
           python -m unittest discover aegis-engine -p "test_*.py"
+          python -m unittest discover benchmarks -p "test_*.py"
           python -m unittest discover usage-optimizer/scripts -p "test_*.py"
           python -m unittest discover second-brain-context/scripts -p "test_*.py"
           python -m unittest discover installer-tests -p "test_*.py"
