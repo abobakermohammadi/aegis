@@ -5,7 +5,7 @@
 
 **A reliability layer for long-horizon AI coding agents.** Aegis turns a coding mission into durable state, reproducible evidence, release gates, regression memory, and deterministic verification so an agent cannot call work complete just because it says it is done.
 
-Aegis is local-first, provider-agnostic, Python 3.9+ stdlib for its deterministic tooling, and has no required account, daemon, hosted service, or telemetry.
+The mission engine and benchmark harness are local-first and model/provider-independent. The optional agent skills are plain Markdown contracts plus local scripts and can be adapted to hosts that support local skill folders. The deterministic Python tooling targets Python 3.9+ stdlib and has no required account, daemon, hosted service, or telemetry.
 
 ## Why Aegis exists
 
