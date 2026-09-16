@@ -115,10 +115,10 @@ python3 -m unittest test_taskapi -v
 
 def generate(target: Path) -> None:
     target.mkdir(parents=True, exist_ok=True)
-    (target / "app.py").write_text(APP_PY)
-    (target / "config.py").write_text(CONFIG_PY)
-    (target / "test_taskapi.py").write_text(TEST_TASKAPI_PY)
-    (target / "README.md").write_text(README_MD)
+    (target / "app.py").write_text(APP_PY, encoding="utf-8")
+    (target / "config.py").write_text(CONFIG_PY, encoding="utf-8")
+    (target / "test_taskapi.py").write_text(TEST_TASKAPI_PY, encoding="utf-8")
+    (target / "README.md").write_text(README_MD, encoding="utf-8")
     print(f"fixture M2 written to {target} (6 planted issues, 5 scored)")
 
 
