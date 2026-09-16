@@ -1,0 +1,39 @@
+name: Feature proposal
+description: Propose a measurable improvement to Aegis
+title: "[proposal] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or failure mode
+      description: What concrete agent/reliability problem does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful behavior change, not just an implementation idea.
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: How should success be verified?
+      description: Give a deterministic test, benchmark condition, or observable acceptance criterion.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Include simpler approaches or reasons this should live outside Aegis.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This proposal does not depend on unverifiable adoption/performance claims.
+          required: true
+        - label: I am willing to help define or review reproducible acceptance criteria.
+          required: true

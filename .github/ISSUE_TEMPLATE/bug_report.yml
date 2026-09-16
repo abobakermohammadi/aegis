@@ -1,0 +1,63 @@
+name: Bug report
+description: Report reproducible incorrect behavior in Aegis
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Aegis. Please keep reports reproducible and remove secrets/private project data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the incorrect behavior in one clear paragraph.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest commands/files needed to reproduce the behavior.
+      placeholder: |
+        1. Run ...
+        2. Change ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Paste relevant command output, failing test names, exit codes, or other reproducible evidence. Redact secrets.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Aegis version or commit
+      placeholder: v2.1.0 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS / Linux / Windows, Python version, agent host if relevant
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I removed secrets, credentials, private prompts, transcripts, and private project data.
+          required: true
+        - label: This is not a security vulnerability that should be reported privately.
+          required: true
