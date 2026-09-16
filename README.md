@@ -1,84 +1,106 @@
 # Aegis
 
-Agent skills plus deterministic tools that turn an AI coding agent into an
-accountable, usage-efficient product team: from a short brief through design,
-build, security, tests, commit, deployment, and live verification — with
-explicit rules against faking any step.
+[![CI](https://github.com/abobakermohammadi/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/abobakermohammadi/aegis/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Components
+**A reliability layer for long-horizon AI coding agents.** Aegis turns a coding mission into durable state, reproducible evidence, release gates, regression memory, and deterministic verification so an agent cannot call work complete just because it says it is done.
 
-| Path | Role |
-|------|------|
-| `aegis-ceo-skills/` | Flagship skill: autonomous end-to-end delivery with a mission-graph status surface, worker activation gates (real capability probes, never simulated workers), a usage governor, and release gates. |
-| `usage-optimizer/` | Skill + `scripts/route_task.py`, a stdlib-only deterministic router that picks the cheapest capable route for a task. Ships with unit tests. |
-| `second-brain-context/` | Skill + `scripts/build_project_graph.py`, which indexes local projects into an Obsidian vault graph (paths and metadata only; sanitizes git credentials; never copies source into the vault). |
-| `five-year-old/` | Skill for plain-language end-to-end ownership: simple progress updates, complete delivery, honest final report. |
-| `aegis-engine/` | **Mission engine** (v2 core): persistent mission state, evidence gates that derive completion from executed commands, git-aware staleness, self-contained checkpoints, one-command resume, next-action ranking, doctor diagnostics. Stdlib-only CLI. |
-| `benchmarks/` | Deterministic benchmark harness: two broken-project missions (M1, M2) with planted defects (incl. hidden regression and SQL injection), objective scorers, aggregate scoring, and an A/B protocol for measuring whether Aegis improves agent performance. |
-| `aegis-ceo-office-site/` | Public product site (Next.js 16 + vinext), live at `https://abobaker288882-crypto.github.io/` via GitHub Pages. Self-contained: self-hosted fonts, zero third-party scripts. See its `DEPLOY.md`. |
+Aegis is local-first, provider-agnostic, Python 3.9+ stdlib for its deterministic tooling, and has no required account, daemon, hosted service, or telemetry.
 
-## Installing the skills
+## Why Aegis exists
+
+Coding agents are increasingly capable, but long-running work still has recurring failure modes:
+
+- **False completion** — the agent says a task is finished without strong evidence.
+- **Stale evidence** — tests passed, then later changes invalidated what they proved.
+- **Context loss** — a restarted session has to rediscover decisions, failures, and remaining work.
+- **Repeated regressions** — previously fixed defects return because the guard and cause were forgotten.
+- **Usage waste** — expensive reasoning is used where deterministic or cheaper routes would be enough.
+
+Aegis makes those concerns explicit and machine-checkable instead of relying on prompt discipline alone.
+
+## 60-second proof
 
 ```sh
-git clone https://github.com/abobaker288882-crypto/aegis.git
+git clone https://github.com/abobakermohammadi/aegis.git
+cd aegis
+./verify.sh
+```
+
+`verify.sh` runs the Python suites plus a clean-environment installer smoke test and exits non-zero on failure. GitHub Actions runs the same verifier on pushes and pull requests.
+
+For the reliability claim, read [`benchmarks/PROTOCOL.md`](benchmarks/PROTOCOL.md). The benchmark harness contains two deterministic broken-project missions with objective scorers, planted functional/security defects, false-completion detection, and an interruption/resume protocol.
+
+**Benchmark honesty:** the recorded results are self-runs used to validate the harness. Aegis does **not** claim an external A/B performance advantage until the same external agent is run in both protocol arms and the raw evidence is published.
+
+## Core components
+
+| Path | What it does |
+|---|---|
+| [`aegis-engine/`](aegis-engine/) | Persistent mission state, evidence-gated completion, git-aware staleness, checksummed checkpoints, one-command resume, blocker/decision tracking, regression memory, and diagnostics. |
+| [`benchmarks/`](benchmarks/) | Deterministic M1/M2 agent-reliability missions, objective scorers, aggregate scoring, false-completion detection, and an A/B protocol. |
+| [`aegis-ceo-skills/`](aegis-ceo-skills/) | End-to-end delivery skill with explicit capability probes, usage governance, and release gates. |
+| [`usage-optimizer/`](usage-optimizer/) | Deterministic task router that chooses the lowest-cost route meeting the requested quality/risk floor. |
+| [`second-brain-context/`](second-brain-context/) | Local project-graph builder for durable context; sanitizes git credentials and does not copy source into the vault. |
+| [`five-year-old/`](five-year-old/) | Plain-language execution/reporting skill for simple progress updates and explicit verification status. |
+
+## Install
+
+```sh
+git clone https://github.com/abobakermohammadi/aegis.git
 cd aegis
 ./install.sh
 ```
 
-This installs the four skills **and** the mission engine. Start tracking any
-project immediately:
+The installer is designed to be safe and reversible: it backs up differing existing copies before upgrade, refuses non-directory obstructions, supports `--keep`, `--target`, and `--uninstall`, and finishes with a live router smoke check.
+
+This installs the skills and the mission engine. To start a mission inside any project:
 
 ```sh
 cd your-project
-python3 ~/.agents/aegis/aegis.py init --goal "Ship feature X" --criterion "Tests pass"
-python3 ~/.agents/aegis/aegis.py next      # highest-value action, with reasons
+python3 ~/.agents/aegis/aegis.py init \
+  --goal "Ship feature X" \
+  --criterion "Tests pass"
+
+python3 ~/.agents/aegis/aegis.py next
 ```
 
-Safe and reversible by design: idempotent, backs up existing copies before
-any upgrade (`--keep` skips instead), refuses to touch non-directory
-obstructions, and ends with a live smoke check of the installed router.
-`./install.sh --uninstall` removes the skills (keeping timestamped backups).
-`--target DIR` or `AEGIS_SKILLS_DIR` chooses another skills directory
-(default `~/.agents/skills`; use your host's equivalent).
+See [`QUICKSTART.md`](QUICKSTART.md) for the first verified run.
 
-Skills are plain Markdown plus optional scripts — no daemon, no account, no
-telemetry. New here? Follow `QUICKSTART.md` for a five-minute verified first
-success.
+## Evidence instead of claims
 
-## Verifying
+The mission engine treats free-text status as information, not proof. Required gates are satisfied only by fresh passing evidence. Evidence can become stale after relevant git changes, and `aegis complete` refuses completion while required gates or blocking decisions remain unresolved.
 
 ```sh
-./verify.sh
+python3 ~/.agents/aegis/aegis.py evidence add --run "python -m pytest"
+python3 ~/.agents/aegis/aegis.py verify --rerun
+python3 ~/.agents/aegis/aegis.py status
+python3 ~/.agents/aegis/aegis.py complete
 ```
 
-Runs both Python test suites (30 tests), an installer smoke test in a clean
-temp directory, and — when Node is available — the site checks below.
+The engine also rejects trivial evidence patterns in diagnostics and redacts secret-like strings before persisting captured output. See [`aegis-engine/README.md`](aegis-engine/README.md) and [`SECURITY.md`](SECURITY.md).
 
-Site checks (requires Node 22+ and pnpm):
+## Benchmark design
 
-```sh
-cd aegis-ceo-office-site
-pnpm install
-pnpm lint && npx tsc --noEmit && pnpm build
-node scripts/screenshot.mjs http://localhost:4173/ shots   # after `pnpm start` or `vinext start -p 4173`
-```
+The included benchmark is intentionally harder than “make tests green.” Missions mix visible failing tests with defects that require inspection, including hidden regressions, documentation/implementation mismatch, and SQL injection. An independent scorer judges the resulting repository rather than trusting the agent's completion message.
 
-## Mission files
+The protocol also includes an interruption modifier: the treatment arm resumes through durable Aegis state while the baseline receives the same opportunity to leave successor notes. This makes restart behavior measurable instead of anecdotal.
 
-`MISSION.md`, `OX_STATE.md`, and `OX_LOG.md` record the current product
-mission, verified state, and chronological decisions/evidence. Keep them
-accurate when you change the product.
+See [`benchmarks/PROTOCOL.md`](benchmarks/PROTOCOL.md) for contamination rules, scoring, and current self-run results.
 
-## Repository notes
+## Project status
 
-- Suite source: https://github.com/abobaker288882-crypto/aegis
-- Site source: https://github.com/abobaker288882-crypto/aegis-site
-- Live site: https://abobaker288882-crypto.github.io/
-- `aegis-ceo-office-site/` is a separate nested git repository with its own
-  history and remote.
-- Python helpers target the Python 3.9+ standard library only.
+Aegis is an **active, early-stage open-source project**. External adoption is still early, so the repository does not inflate usage claims. The current value is the shipped implementation, reproducible verification, explicit security model, and benchmark protocol. Contributions and independent benchmark runs are welcome.
+
+Primary maintainer: **Abobaker Mohammadi** ([@abobakermohammadi](https://github.com/abobakermohammadi)). Maintainer responsibilities are documented in [`MAINTAINERS.md`](MAINTAINERS.md).
+
+## Contributing and security
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution rules and verification workflow.
+- [`SECURITY.md`](SECURITY.md) — threat model, trust boundaries, and private vulnerability reporting.
+- [`CHANGELOG.md`](CHANGELOG.md) — versioned project history.
+- [`QUICKSTART.md`](QUICKSTART.md) — five-minute first-success path.
 
 ## License
 
-MIT — see `LICENSE`. Security concerns: `SECURITY.md`. Contributions:
-`CONTRIBUTING.md`.
+MIT — see [`LICENSE`](LICENSE).
