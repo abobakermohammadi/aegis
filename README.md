@@ -1,9 +1,11 @@
 # Aegis
 
 [![CI](https://github.com/abobakermohammadi/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/abobakermohammadi/aegis/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/abobakermohammadi/aegis)](https://github.com/abobakermohammadi/aegis/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Website:** https://abobakermohammadi.github.io/aegis/
+**Website:** https://abobakermohammadi.github.io/aegis/  
+**Latest release:** [v2.1.0 — Regression Memory V2 + Benchmark v2](https://github.com/abobakermohammadi/aegis/releases/tag/v2.1.0)
 
 **A reliability layer for long-horizon AI coding agents.** Aegis turns a coding mission into durable state, reproducible evidence, release gates, regression memory, and deterministic verification so an agent cannot call work complete just because it says it is done.
 
@@ -29,7 +31,7 @@ cd aegis
 ./verify.sh
 ```
 
-`verify.sh` runs the Python suites plus a clean-environment installer smoke test and exits non-zero on failure. GitHub Actions runs the same verifier on pushes and pull requests.
+`verify.sh` runs the Python suites, a clean-environment installer smoke test, and integrity checks for the public project-site source. It exits non-zero on failure. GitHub Actions runs the same verifier on pushes and pull requests.
 
 For the reliability claim, read [`benchmarks/PROTOCOL.md`](benchmarks/PROTOCOL.md). The benchmark harness contains two deterministic broken-project missions with objective scorers, planted functional/security defects, false-completion detection, and an interruption/resume protocol.
 
@@ -92,15 +94,16 @@ See [`benchmarks/PROTOCOL.md`](benchmarks/PROTOCOL.md) for contamination rules, 
 
 ## Project status
 
-Aegis is an **active, early-stage open-source project**. External adoption is still early, so the repository does not inflate usage claims. The current value is the shipped implementation, reproducible verification, explicit security model, and benchmark protocol. Contributions and independent benchmark runs are welcome.
+Aegis is an **active, early-stage open-source project**. External adoption is still early, so the repository does not inflate usage claims. The current value is the shipped implementation, reproducible verification, explicit security model, benchmark protocol, and documented maintenance process. Contributions and independent benchmark runs are welcome.
 
 The evidence-first development plan is in [`ROADMAP.md`](ROADMAP.md), including independent external-agent A/B benchmarks, real maintainer-workflow dogfooding, broader deterministic benchmark coverage, portability work, and release hygiene.
 
 Primary maintainer: **Abobaker Mohammadi** ([@abobakermohammadi](https://github.com/abobakermohammadi)). Maintainer responsibilities are documented in [`MAINTAINERS.md`](MAINTAINERS.md).
 
-## Contributing and security
+## Contributing, maintenance, and security
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution rules and verification workflow.
+- [`RELEASING.md`](RELEASING.md) — evidence-first release checklist and release-note standard.
 - [`SECURITY.md`](SECURITY.md) — threat model, trust boundaries, and private vulnerability reporting.
 - [`ROADMAP.md`](ROADMAP.md) — evidence-first development priorities.
 - [`CHANGELOG.md`](CHANGELOG.md) — versioned project history.

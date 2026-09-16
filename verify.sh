@@ -24,15 +24,43 @@ else
 fi
 rm -rf "$smoke"
 
-if command -v node >/dev/null 2>&1 && [ -d aegis-ceo-office-site/node_modules ]; then
-  echo "== site: lint, types, build =="
-  ( cd aegis-ceo-office-site && pnpm lint && npx tsc --noEmit && pnpm build ) || fail=1
-else
-  echo "== site checks skipped (node or node_modules not present) =="
+echo "== docs: public project site source =="
+for file in docs/index.html docs/404.html docs/sitemap.xml docs/.nojekyll; do
+  if [ ! -e "$file" ]; then
+    echo "missing site file: $file" >&2
+    fail=1
+  fi
+done
+
+if [ -f docs/index.html ]; then
+  grep -q 'https://abobakermohammadi.github.io/aegis/' docs/index.html || {
+    echo "site canonical URL missing" >&2
+    fail=1
+  }
+  grep -q 'github.com/abobakermohammadi/aegis' docs/index.html || {
+    echo "site public-repository link missing" >&2
+    fail=1
+  }
+  grep -q './verify.sh' docs/index.html || {
+    echo "site proof command missing" >&2
+    fail=1
+  }
+  if grep -Eqi 'abobaker288882-crypto|aegis-ceo-office-site|SprachPrep|MAMELAT|NEWAPP|Sineklik' docs/index.html; then
+    echo "site contains stale or unrelated project identity" >&2
+    fail=1
+  fi
+fi
+
+if [ -f docs/sitemap.xml ]; then
+  grep -q '<loc>https://abobakermohammadi.github.io/aegis/</loc>' docs/sitemap.xml || {
+    echo "site sitemap canonical route missing" >&2
+    fail=1
+  }
 fi
 
 if [ "$fail" -ne 0 ]; then
   echo "RESULT: FAILURES ABOVE" >&2
   exit 1
 fi
+
 echo "RESULT: all checks passed"
