@@ -29,6 +29,13 @@ def _git(project: Path, *args: str) -> str | None:
     return result.stdout[:MAX_BYTES].decode("utf-8", errors="replace")
 
 
+def _nul_paths(out: str | None) -> list[str]:
+    """Decode a git ``-z`` path stream without core.quotePath ambiguity."""
+    if not out:
+        return []
+    return [path for path in out.split("\0") if path]
+
+
 def available() -> bool:
     try:
         subprocess.run(["git", "--version"], capture_output=True, timeout=TIMEOUT, check=False)
@@ -50,28 +57,30 @@ def branch(project: Path) -> str:
 
 
 def dirty_files(project: Path) -> list[str]:
-    out = _git(project, "status", "--porcelain")
-    if not out:
-        return []
-    lines = [line[3:] for line in out.splitlines() if len(line) > 3]
-    # A rename line "R  old -> new" yields the whole expression; keep both sides.
-    files: list[str] = []
-    for name in lines:
-        if " -> " in name:
-            files.extend(part.strip() for part in name.split(" -> "))
-        else:
-            files.append(name.strip().strip('"'))
-    return [f for f in files if f]
+    """Return exact changed paths, including Unicode/whitespace and rename sides."""
+    # ``--no-renames`` deliberately exposes both sides of a rename. That is
+    # conservative for regression/evidence guards: a guard on either the old
+    # or new path must notice the change. ``-z`` avoids quoted/escaped names.
+    tracked = _nul_paths(_git(
+        project, "diff", "HEAD", "--name-only", "--no-renames", "-z", "--"
+    ))
+    untracked = _nul_paths(_git(
+        project, "ls-files", "--others", "--exclude-standard", "-z", "--"
+    ))
+    return list(dict.fromkeys(tracked + untracked))
 
 
 def changed_since(project: Path, commit: str) -> list[str] | None:
-    """Files changed between commit and HEAD; None when unknowable."""
+    """Exact paths changed between commit and HEAD; None when unknowable."""
     if not commit or not is_repo(project):
         return None
-    out = _git(project, "diff", "--name-only", "--no-color", commit, "HEAD", "--")
+    out = _git(
+        project, "diff", "--name-only", "--no-color", "--no-renames", "-z",
+        commit, "HEAD", "--",
+    )
     if out is None:
         return None
-    return [line for line in (l.strip() for l in out.splitlines()) if line]
+    return _nul_paths(out)
 
 
 def commit_subject(project: Path, commit: str) -> str:
