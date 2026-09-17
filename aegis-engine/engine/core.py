@@ -138,34 +138,8 @@ def _freshness(project: Path, ev: dict) -> str:
         return "unverifiable"
     files = ev.get("files") or []
     if not files:
-        return "stale"  # repo-wide evidence does not survive any new commit
+        return "stale"
     return "stale" if set(changed) & set(files) else "aged-ok"
-
-
-def gate_status(project: Path, st: dict, criterion: dict) -> tuple[str, list[str]]:
-    """Derived status: pass | stale | failed | blocked | open (+ reasons)."""
-    if criterion.get("blocked_reason"):
-        return "blocked", [criterion["blocked_reason"]]
-    evs = [e for e in st["evidence"] if e["id"] in criterion.get("evidence", [])]
-    if not evs:
-        return "open", ["no evidence recorded"]
-    if all(not e.get("verified") for e in evs):
-        return "stale", ["only UNVERIFIED manual claims; run a real check"]
-    freshest: dict[str, list[dict]] = {}
-    for ev in evs:
-        freshest.setdefault(_freshness(project, ev), []).append(ev)
-    passing = [ev for ev in evs if ev.get("exit") == 0]
-    if passing:
-        kinds = sorted({_freshness(project, ev) for ev in passing})
-        if "fresh" in kinds or "aged-ok" in kinds:
-            return "pass", []
-        if "unverifiable" in kinds:
-            return "pass", ["evidence cannot be staleness-checked (no git)"]
-        if "unverified" in kinds:
-            return "stale", ["only UNVERIFIED manual claims; run a real check"]
-        return "stale", ["all passing evidence is stale after later commits"]
-    latest = max(evs, key=lambda e: e["captured_at"])
-    return "failed", [f"last check exited {latest.get('exit')}: {latest.get('summary', '')[:120]}"]
 
 
 TRIVIAL_COMMANDS = {"true", ":"}
@@ -184,6 +158,35 @@ def _is_trivial(command):
     if argv[0] in TRIVIAL_COMMANDS:
         return True
     return argv[0] == "echo" and len(argv) <= 3
+
+
+def gate_status(project: Path, st: dict, criterion: dict) -> tuple[str, list[str]]:
+    """Derived status: pass | stale | failed | blocked | open (+ reasons)."""
+    if criterion.get("blocked_reason"):
+        return "blocked", [criterion["blocked_reason"]]
+    evs = [e for e in st["evidence"] if e["id"] in criterion.get("evidence", [])]
+    if not evs:
+        return "open", ["no evidence recorded"]
+    if all(not e.get("verified") for e in evs):
+        return "stale", ["only UNVERIFIED manual claims; run a real check"]
+    freshest: dict[str, list[dict]] = {}
+    for ev in evs:
+        freshest.setdefault(_freshness(project, ev), []).append(ev)
+    successful = [ev for ev in evs if ev.get("exit") == 0]
+    passing = [ev for ev in successful if not _is_trivial(ev.get("command"))]
+    if passing:
+        kinds = sorted({_freshness(project, ev) for ev in passing})
+        if "fresh" in kinds or "aged-ok" in kinds:
+            return "pass", []
+        if "unverifiable" in kinds:
+            return "pass", ["evidence cannot be staleness-checked (no git)"]
+        if "unverified" in kinds:
+            return "stale", ["only UNVERIFIED manual claims; run a real check"]
+        return "stale", ["all passing evidence is stale after later commits"]
+    if successful:
+        return "failed", ["only trivial successful evidence; run a check that exercises real behavior"]
+    latest = max(evs, key=lambda e: e["captured_at"])
+    return "failed", [f"last check exited {latest.get('exit')}: {latest.get('summary', '')[:120]}"]
 
 
 def rerun_evidence(project: Path, st: dict) -> list:
@@ -217,7 +220,6 @@ def verify_mission(project: Path, st: dict, rerun: bool = False) -> dict:
                 if ev["id"] in bad:
                     ev["exit"] = next(d["actual"] for d in rerun_disagreements
                                       if d["id"] == ev["id"])
-    """Recompute every criterion's derived status. Returns a report dict."""
     rows = []
     for c in st["criteria"]:
         status, reasons = gate_status(project, st, c)
@@ -258,7 +260,6 @@ def score_defect(d: dict, ctx: dict) -> int:
 
 
 def next_action(project: Path, st: dict) -> dict:
-    """Deterministic highest-value recommendation with rationale."""
     report = verify_mission(project, st)
     gate_blockers = [
         c["id"] for c in report["criteria"]
@@ -266,7 +267,6 @@ def next_action(project: Path, st: dict) -> dict:
     ]
     ctx = {"workstreams": st["workstreams"], "gate_blockers": gate_blockers}
     candidates: list[dict] = []
-
     for d in st["defects"]:
         if d.get("status") != "open":
             continue
@@ -314,15 +314,12 @@ def next_action(project: Path, st: dict) -> dict:
     }
 
 
-# ---------------------------------------------------------------- checkpoints
-
 def checkpoint_path(project: Path) -> Path:
     return state_mod.state_dir(project) / "checkpoints"
 
 
 def create_checkpoint(project: Path, st: dict, note: str = "",
                       tests_command: str | None = None) -> dict:
-    """Write a self-contained checkpoint (full snapshot + git context)."""
     cp_dir = checkpoint_path(project)
     cp_dir.mkdir(parents=True, exist_ok=True)
     n = max((c.get("n", 0) for c in st.get("checkpoints", [])), default=0) + 1
@@ -362,7 +359,6 @@ def create_checkpoint(project: Path, st: dict, note: str = "",
         "n": n, "file": f"checkpoints/{fname}", "commit": payload["git"]["commit"],
         "created_at": ts, "note": clip(note, 120),
     })
-    # Prune oldest beyond the limit; the newest always survives.
     cps = sorted(st["checkpoints"], key=lambda c: c.get("n", 0))
     while len(cps) > CHECKPOINT_LIMIT:
         old = cps.pop(0)
@@ -396,8 +392,6 @@ def restore_checkpoint(project: Path, rel_name: str) -> dict:
     state_mod.save(project, snapshot)
     return payload
 
-
-# ------------------------------------------------------------- resume / doctor
 
 def resume_brief(project: Path, st: dict) -> str:
     report = verify_mission(project, st)
@@ -530,7 +524,7 @@ def doctor(project: Path) -> dict:
     for cp in st.get("checkpoints", []):
         try:
             read_checkpoint(project, cp["file"])
-        except Exception as exc:  # noqa: BLE001 - report any parse/checksum failure
+        except Exception as exc:
             add("error", "BAD_CHECKPOINT", f"{cp['file']}: {exc}",
                 "restore state via 'aegis restore --backup' or remove the broken checkpoint")
     listed = {Path(c["file"]).name for c in st.get("checkpoints", [])}
