@@ -165,6 +165,25 @@ def _smoke_router(target: Path) -> None:
         raise RuntimeError("installed router returned unexpected route: {!r}".format(payload.get("route")))
 
 
+def _smoke_engine(engine_target: Path) -> None:
+    """Prove the copied mission engine can actually start from its install path."""
+    entrypoint = engine_target / "aegis.py"
+    if not entrypoint.is_file():
+        raise RuntimeError("installed mission engine entrypoint is missing: {}".format(entrypoint))
+    env = dict(os.environ)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    proc = subprocess.run(
+        [sys.executable, str(entrypoint), "--help"],
+        cwd=str(engine_target), capture_output=True, text=True,
+        check=False, env=env, timeout=30,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).strip()
+        raise RuntimeError("installed mission engine smoke check failed: {}".format(detail))
+    if "persistent execution layer" not in proc.stdout:
+        raise RuntimeError("installed mission engine returned unexpected help output")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Install, upgrade, or uninstall Aegis safely")
     parser.add_argument("--target", type=Path, default=None, help="skills target directory")
@@ -172,7 +191,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--only", action="append", default=[], help="install/uninstall only one named skill; repeatable")
     parser.add_argument("--keep", action="store_true", help="keep differing existing copies instead of upgrading")
     parser.add_argument("--uninstall", action="store_true", help="remove installed copies by moving them to timestamped backups")
-    parser.add_argument("--skip-smoke", action="store_true", help="skip installed router smoke verification")
+    parser.add_argument("--skip-smoke", action="store_true", help="skip installed router and mission-engine smoke verification")
     return parser
 
 
@@ -240,6 +259,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             _smoke_router(target)
             if "usage-optimizer" in skills:
                 print("verified: installed router answers correctly")
+            _smoke_engine(engine_target)
+            print("verified: installed mission engine starts correctly")
 
         print(
             "done: {installed} installed, {upgraded} upgraded, {unchanged} unchanged, {kept} kept (target: {target})".format(
