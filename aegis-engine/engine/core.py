@@ -19,8 +19,11 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import cmdline
 from . import gitinfo
 from . import state as state_mod
+
+split_command = cmdline.split_command
 
 CHECKPOINT_LIMIT = 20
 OUTPUT_KEEP = 4_000
@@ -52,10 +55,8 @@ def clip(text: str, limit: int = OUTPUT_KEEP) -> str:
 
 def run_command(project: Path, command: str, timeout: int = 600) -> dict:
     """Run a verification command and return a deterministic record."""
-    import shlex
-
     try:
-        argv = shlex.split(command)
+        argv = split_command(command)
     except ValueError as exc:
         return {"exit": 2, "summary": f"unparseable command: {exc}", "output": ""}
     if not argv:
@@ -148,9 +149,8 @@ TRIVIAL_COMMANDS = {"true", ":"}
 def _is_trivial(command):
     if not command:
         return False
-    import shlex
     try:
-        argv = shlex.split(command)
+        argv = split_command(command)
     except ValueError:
         return False
     if not argv:
