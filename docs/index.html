@@ -1,1 +1,139 @@
-PLACEHOLDER
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Aegis | Reliability for AI coding agents</title>
+  <meta name="description" content="Aegis is an open-source reliability layer for long-horizon AI coding agents: durable mission state, evidence-gated completion, regression memory, deterministic benchmarks, and reproducible verification.">
+  <link rel="canonical" href="https://abobakermohammadi.github.io/aegis/">
+  <meta property="og:title" content="Aegis | Reliability for AI coding agents">
+  <meta property="og:description" content="Evidence-gated completion, durable mission state, regression memory, and deterministic verification for coding agents.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://abobakermohammadi.github.io/aegis/">
+  <meta name="theme-color" content="#101411">
+  <style>
+    :root{--bg:#f4f2eb;--paper:#fbfaf6;--ink:#101411;--muted:#677068;--line:rgba(16,20,17,.13);--dark:#0b0e0c;--green:#0a7b49;--green2:#36d68d;--warn:#b45309;--bad:#b91c1c;--r:20px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}.wrap{width:min(1120px,calc(100% - 36px));margin:auto}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .top{position:sticky;top:0;z-index:20;background:rgba(244,242,235,.88);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}.top .wrap{height:58px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.08em;font-size:14px}.mark{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--dark);color:white}.mark svg{width:17px;height:17px}.nav{display:flex;gap:4px;align-items:center}.nav a{padding:8px 10px;border-radius:10px;color:var(--muted);font-size:13px}.nav a:hover{background:white;color:var(--ink)}.nav .src{background:var(--dark);color:white;padding-inline:13px}
+    .hero{padding:42px 0 36px}.status{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.48);font-size:12px;color:var(--muted)}.dot{width:7px;height:7px;border-radius:50%;background:var(--green2);box-shadow:0 0 0 4px rgba(54,214,141,.13)}
+    h1{max-width:920px;margin:14px 0 14px;font-size:clamp(44px,7.2vw,92px);line-height:.9;letter-spacing:-.07em;font-weight:720}.green{color:var(--green)}.lede{max-width:760px;margin:0;font-size:clamp(17px,2vw,24px);line-height:1.35;letter-spacing:-.03em;color:#374039}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid rgba(16,20,17,.22);border-radius:11px;font-weight:700;font-size:14px;cursor:pointer;background:transparent;font:inherit}.btn.primary{background:var(--dark);color:white;border-color:var(--dark)}.btn.ghost{background:var(--paper)}
+    .proof{margin-top:28px;border-radius:var(--r);overflow:hidden;background:var(--dark);color:#f6faf7;box-shadow:0 24px 60px rgba(0,0,0,.12)}.proof-head{display:flex;justify-content:space-between;gap:20px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.09);color:#aab2ab;font-size:12px}.proof-grid{display:grid;grid-template-columns:1.12fr .88fr}.terminal{padding:20px 22px;border-right:1px solid rgba(255,255,255,.09)}.terminal code{display:block;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:13px;color:#e8eee9}.prompt{color:var(--green2)}.proof-note{padding:20px}.proof-note strong{font-size:20px;letter-spacing:-.03em}.proof-note p{margin:8px 0 0;color:#a4ada6;line-height:1.55;font-size:14px}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.chips span{padding:6px 8px;border:1px solid rgba(255,255,255,.13);border-radius:999px;color:#c6cec8;font-size:11px}
+    .section{padding:48px 0}.head{display:grid;grid-template-columns:.85fr 1.15fr;gap:28px;align-items:end;margin-bottom:22px}.eyebrow{margin:0 0 8px;color:var(--green);font:700 11px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase}h2{margin:0;font-size:clamp(30px,4.2vw,48px);line-height:.95;letter-spacing:-.05em}.head>p{margin:0;color:var(--muted);font-size:16px;line-height:1.55}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--paper)}.card b{display:block;margin-bottom:6px;font-size:17px;letter-spacing:-.02em}.card p{margin:0;color:var(--muted);line-height:1.55;font-size:14px}
+    .loop{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--paper)}.loop article{padding:18px;min-height:132px;border-right:1px solid var(--line)}.loop article:last-child{border-right:0}.loop small{display:block;margin-bottom:18px;color:var(--green);font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace}.loop p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+    .components{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.tag{display:inline-block;margin-bottom:14px;color:var(--green);font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;text-transform:uppercase}.component code{display:block;margin-top:14px;color:#59615b;font-size:12px}.component p{margin:0;color:var(--muted);line-height:1.5;font-size:14px}
+    .demo{border:1px solid var(--line);border-radius:var(--r);background:var(--paper);overflow:hidden}.demo-grid{display:grid;grid-template-columns:1.05fr .95fr}.demo-left{padding:22px;border-right:1px solid var(--line)}.demo-right{padding:22px;background:#f7f5ef}.demo label{display:block;font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}.demo textarea{width:100%;min-height:120px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:white;color:var(--ink)}.demo-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.pill{border:1px solid var(--line);background:white;border-radius:999px;padding:7px 11px;font-size:12px;cursor:pointer}.pill:hover{border-color:var(--ink)}.stamp{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font:700 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}.stamp.soft{background:#fff7ed;color:var(--warn);border:1px solid rgba(180,83,9,.35)}.stamp.ok{background:#ecfdf5;color:var(--green);border:1px solid rgba(10,123,73,.3)}.stamp.empty{background:#f3f4f6;color:#6b7280;border:1px solid var(--line)}.gates{margin-top:14px;display:grid;gap:8px}.gate{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:white;font-size:13px;line-height:1.4}.gate i{font-style:normal;font-weight:800;width:16px}.gate.pass i{color:var(--green)}.gate.fail i{color:var(--bad)}.gate.na i{color:#9ca3af}.demo-note{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.5}
+    .evidence{padding:26px;border-radius:var(--r);background:var(--dark);color:#f4f8f5}.evidence-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}.evidence h3{margin:0 0 10px;font-size:clamp(26px,3.4vw,40px);line-height:1.02;letter-spacing:-.045em}.evidence p{margin:0;color:#a5aea7;line-height:1.55;font-size:14px}.checks{display:grid}.check{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.09);font-size:14px}.check:last-child{border-bottom:0}.check i{font-style:normal;color:var(--green2)}.honesty{margin-top:18px;padding:14px 16px;border:1px solid rgba(54,214,141,.28);border-radius:12px;background:rgba(54,214,141,.05);color:#b8c5bb;font-size:13px;line-height:1.55}.honesty strong{color:white}
+    .install{display:grid;grid-template-columns:.78fr 1.22fr;gap:28px}.install-panel{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--paper)}.install-row{padding:12px 0;border-bottom:1px solid var(--line)}.install-row:last-child{border-bottom:0}.install-row small{display:block;margin-bottom:6px;color:var(--muted)}.install-row code{display:block;white-space:nowrap;overflow:auto;font-size:13px}.links{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.links a{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font-size:13px}
+    .footer{padding:22px 0 34px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}.footer .wrap{display:flex;justify-content:space-between;gap:20px}.footer strong{color:var(--ink)}
+    @media(max-width:820px){.nav a:not(.src):not(.keep){display:none}.hero{padding-top:28px}.proof-grid,.head,.evidence-grid,.install,.demo-grid{grid-template-columns:1fr}.terminal,.demo-left{border-right:0;border-bottom:1px solid rgba(255,255,255,.09)}.demo-left{border-bottom:1px solid var(--line)}.grid,.components{grid-template-columns:1fr}.loop{grid-template-columns:1fr 1fr}.loop article:nth-child(2){border-right:0}.loop article:nth-child(-n+2){border-bottom:1px solid var(--line)}.head{gap:14px}.footer .wrap{flex-direction:column}}
+    @media(max-width:520px){.wrap{width:min(100% - 24px,1120px)}h1{font-size:44px}.loop{grid-template-columns:1fr}.loop article{border-right:0!important;border-bottom:1px solid var(--line)!important}.loop article:last-child{border-bottom:0!important}.proof-head{flex-direction:column}.evidence{padding:20px}.actions .btn{width:100%}}
+  </style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="brand" href="/aegis/"><span class="mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 20 5.4v6.3c0 5.3-3.2 8.7-8 10.8-4.8-2.1-8-5.5-8-10.8V5.4L12 2.5Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.4 12.2 2.2 2.2 5-5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>AEGIS</a><nav class="nav"><a class="keep" href="#demo">Demo</a><a href="#why">Why</a><a href="#system">System</a><a href="#evidence">Evidence</a><a href="#install">Install</a><a class="src" href="https://github.com/abobakermohammadi/aegis">GitHub ↗</a></nav></div></header>
+<main>
+<section class="hero wrap"><div class="status"><span class="dot"></span>Active open-source · MIT · upgrade-2026-09-18</div><h1>Evidence,<br><span class="green">not vibes.</span></h1><p class="lede">Aegis turns long-horizon agent work into durable mission state, fresh evidence, and completion gates you can check — not trust.</p><div class="actions"><a class="btn primary" href="#install">Install Aegis</a><a class="btn ghost" href="#demo">Try the gate demo</a><a class="btn" href="https://github.com/abobakermohammadi/aegis/blob/main/benchmarks/PROTOCOL.md">Benchmark protocol</a></div><div class="proof"><div class="proof-head"><span class="mono">60-SECOND PROOF</span><span>Clone → verify → inspect</span></div><div class="proof-grid"><div class="terminal"><code><span class="prompt">$</span> git clone https://github.com/abobakermohammadi/aegis.git
+<span class="prompt">$</span> cd aegis
+<span class="prompt">$</span> ./verify.sh</code></div><div class="proof-note"><strong>Verification is part of the product.</strong><p>The repo verifier runs deterministic Python suites plus a clean-environment installer smoke test and fails closed. GitHub Actions runs the same path on every push and PR.</p><div class="chips"><span>Python 3.9+</span><span>Provider independent</span><span>Local first</span><span>No required telemetry</span></div></div></div></div></section>
+
+<section class="section wrap" id="demo" data-aegis-demo="gate">
+  <div class="head"><div><p class="eyebrow">Interactive</p><h2>False completion detector.</h2></div><p>Paste an agent “we’re done” claim. Soft status dies. Evidence language opens the gate. This is a browser demo of the product idea — not the engine itself.</p></div>
+  <div class="demo">
+    <div class="demo-grid">
+      <div class="demo-left">
+        <label for="claim">Agent status claim</label>
+        <textarea id="claim" placeholder="e.g. working on it / tests passed (exit 0) attached to criterion ship-tests"></textarea>
+        <div class="demo-actions">
+          <button type="button" class="btn primary" id="run-gate">Run gate</button>
+          <button type="button" class="pill" data-fill="working on it, almost done — should be fine">Soft status</button>
+          <button type="button" class="pill" data-fill="verify.sh exit 0; criterion tests-pass attached; no open blockers; evidence fresh vs HEAD">Hard evidence</button>
+        </div>
+        <p class="demo-note">Markers CapNuke can grep: <code>data-aegis-demo=&quot;gate&quot;</code> · upgrade-2026-09-18</p>
+      </div>
+      <div class="demo-right">
+        <label>Stamp</label>
+        <div id="stamp" class="stamp empty">WAITING</div>
+        <p id="reason" style="margin:12px 0 0;color:var(--muted);font-size:14px;line-height:1.5">No claim yet.</p>
+        <div class="gates" id="gates" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section wrap" id="why"><div class="head"><div><p class="eyebrow">Why Aegis exists</p><h2>Agents fail in boring, expensive ways.</h2></div><p>Capable agents still lose context, reuse stale proof, reintroduce fixed defects, or declare success early. Aegis makes those failure modes machine-checkable.</p></div><div class="grid"><article class="card"><b>False completion</b><p>Free-text confidence is not proof. Required gates need fresh passing evidence.</p></article><article class="card"><b>Stale evidence</b><p>Relevant code changes invalidate prior proof. “Passed once” is not permanent truth.</p></article><article class="card"><b>Context loss</b><p>Checkpoints, decisions, blockers, and mission state survive across sessions.</p></article><article class="card"><b>Repeated regressions</b><p>Confirmed failures become regression memory and reusable protection.</p></article></div></section>
+
+<section class="section wrap" id="system"><div class="head"><div><p class="eyebrow">The mission loop</p><h2>Make progress inspectable.</h2></div><p>Creative reasoning stays free. Completion stays anchored to persistent state and reproducible checks.</p></div><div class="loop"><article><small>01</small><strong>Mission</strong><p>Goal, criteria, blockers, authority, required proof.</p></article><article><small>02</small><strong>Execute</strong><p>Work against durable state, not one fragile chat.</p></article><article><small>03</small><strong>Evidence</strong><p>Attach executable checks to completion claims.</p></article><article><small>04</small><strong>Verify</strong><p>Reject stale or missing gates; complete only when fresh.</p></article></div></section>
+
+<section class="section wrap"><div class="head"><div><p class="eyebrow">Components</p><h2>Small pieces with strict jobs.</h2></div><p>Local-first and light. Complexity lives in the evidence model and workflow rules.</p></div><div class="components"><article class="card component"><span class="tag">Mission engine</span><b>Durable state + gates</b><p>Mission files, checkpoints, blockers, git-aware staleness, completion rules.</p><code>aegis-engine/</code></article><article class="card component"><span class="tag">Benchmarks</span><b>Objective scoring</b><p>Broken-project missions, planted defects, false-completion detection, A/B protocol.</p><code>benchmarks/</code></article><article class="card component"><span class="tag">Usage routing</span><b>Spend where it matters</b><p>Route by quality and risk floors — not the most expensive path by default.</p><code>usage-optimizer/</code></article><article class="card component"><span class="tag">Agent skills</span><b>Delivery contracts</b><p>Capability probes, ownership, verification, and release gates.</p><code>aegis-ceo-skills/</code></article><article class="card component"><span class="tag">Context</span><b>Recoverable memory</b><p>Local project graphs without copying source into a hosted vault.</p><code>second-brain-context/</code></article><article class="card component"><span class="tag">Plain language</span><b>Simple status, explicit proof</b><p>Readable progress with verification status still visible.</p><code>five-year-old/</code></article></div></section>
+
+<section class="section wrap" id="evidence"><div class="evidence"><div class="evidence-grid"><div><p class="eyebrow" style="color:#36d68d">Evidence model</p><h3>“Done” is a state, not a sentence.</h3><p>Status text is information. Gates close only on fresh passing evidence — and reopen when the repo moves under that proof.</p></div><div class="checks"><div class="check"><i>✓</i><span>Executable checks bind to mission criteria.</span></div><div class="check"><i>✓</i><span>Git drift marks prior evidence stale.</span></div><div class="check"><i>✓</i><span>Open blockers block completion.</span></div><div class="check"><i>✓</i><span>Secret-like strings are redacted before persistence.</span></div></div></div><div class="honesty"><strong>Benchmark honesty:</strong> recorded results are self-runs that validate the harness. No external performance claim until the same agent runs both protocol arms with published raw evidence.</div></div></section>
+
+<section class="section wrap" id="install"><div class="install"><div><p class="eyebrow">Install</p><h2>Try the repo, not the pitch.</h2><p style="color:var(--muted);line-height:1.55;margin:0">Reversible installer. Verifier tells you if the shipped system is healthy.</p><div class="links"><a href="https://github.com/abobakermohammadi/aegis/blob/main/QUICKSTART.md">Quickstart ↗</a><a href="https://github.com/abobakermohammadi/aegis/blob/main/SECURITY.md">Security ↗</a><a href="https://github.com/abobakermohammadi/aegis/blob/main/ROADMAP.md">Roadmap ↗</a></div></div><div class="install-panel mono"><div class="install-row"><small>Clone</small><code>git clone https://github.com/abobakermohammadi/aegis.git</code></div><div class="install-row"><small>Verify</small><code>cd aegis && ./verify.sh</code></div><div class="install-row"><small>Install</small><code>./install.sh</code></div><div class="install-row"><small>Start a mission</small><code>python3 ~/.agents/aegis/aegis.py init --goal "Ship feature X" --criterion "Tests pass"</code></div></div></div></section>
+</main>
+<footer class="footer"><div class="wrap"><strong>AEGIS</strong><span>Open source under the MIT License · Source on GitHub</span></div></footer>
+<script>
+(function () {
+  var soft = /\b(working on it|almost( done)?|soon|should be fine|lgtm|trust me|hopefully|vibes|probably|i think)\b/i;
+  var hardBits = [
+    { re: /\bexit\s*0\b|\bverify\.sh\b|\bpytest\b|\bnpm test\b/i, label: 'Executable check named' },
+    { re: /\bcriterion\b|\bgate\b|\battached\b/i, label: 'Criterion / attachment' },
+    { re: /\bfresh\b|\bHEAD\b|\bstale\b/i, label: 'Freshness vs HEAD' },
+    { re: /\bno open blockers\b|\bblockers?:\s*none\b|\bno blockers\b/i, label: 'Blockers clear' }
+  ];
+  var claim = document.getElementById('claim');
+  var stamp = document.getElementById('stamp');
+  var reason = document.getElementById('reason');
+  var gates = document.getElementById('gates');
+  function render(result) {
+    stamp.className = 'stamp ' + result.cls;
+    stamp.textContent = result.stamp;
+    reason.textContent = result.reason;
+    gates.innerHTML = result.gates.map(function (g) {
+      return '<div class="gate ' + g.state + '"><i>' + (g.state === 'pass' ? '✓' : g.state === 'fail' ? '✗' : '·') + '</i><span>' + g.label + '</span></div>';
+    }).join('');
+  }
+  function run() {
+    var text = (claim.value || '').trim();
+    if (!text) {
+      render({ cls: 'empty', stamp: 'WAITING', reason: 'Paste a claim first.', gates: hardBits.map(function (b) { return { state: 'na', label: b.label }; }) });
+      return;
+    }
+    if (soft.test(text)) {
+      render({
+        cls: 'soft',
+        stamp: 'COSPLAY · SOFT STATUS',
+        reason: 'Free-text confidence is not proof. Soft phrases fail closed until executable evidence is attached.',
+        gates: hardBits.map(function (b) { return { state: b.re.test(text) ? 'pass' : 'fail', label: b.label }; })
+      });
+      return;
+    }
+    var hits = hardBits.filter(function (b) { return b.re.test(text); });
+    if (hits.length >= 3) {
+      render({
+        cls: 'ok',
+        stamp: 'VERIFIED · GATE OPEN',
+        reason: 'Demo only: claim reads like fresh evidence with criteria and clear blockers. Real Aegis still runs the checks.',
+        gates: hardBits.map(function (b) { return { state: b.re.test(text) ? 'pass' : 'fail', label: b.label }; })
+      });
+      return;
+    }
+    render({
+      cls: 'soft',
+      stamp: 'INCOMPLETE · GATES MISSING',
+      reason: 'Not soft-status sludge, but not enough evidence language to open the gate in this demo.',
+      gates: hardBits.map(function (b) { return { state: b.re.test(text) ? 'pass' : 'fail', label: b.label }; })
+    });
+  }
+  document.getElementById('run-gate').addEventListener('click', run);
+  document.querySelectorAll('[data-fill]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      claim.value = el.getAttribute('data-fill');
+      run();
+    });
+  });
+})();
+</script>
+</body>
+</html>
