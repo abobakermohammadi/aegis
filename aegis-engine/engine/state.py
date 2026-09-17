@@ -1,17 +1,20 @@
 """Mission state: versioned schema, atomic storage, validation, migration.
 
 The state file `<project>/aegis/mission.json` is the single authoritative
-source of truth for an Aegis mission. Writes are atomic (tmp + rename) and
-keep a `.bak` of the last good version for corruption recovery.
+source of truth for an Aegis mission. Writes are atomic (tmp + rename), keep a
+`.bak` of the last good version, and loaded snapshots use optimistic
+compare-and-swap protection so concurrent writers cannot silently lose work.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shutil
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,9 +22,18 @@ SCHEMA_VERSION = 1
 STATE_DIR_NAME = "aegis"
 STATE_FILE_NAME = "mission.json"
 MAX_STATE_BYTES = 5 * 1024 * 1024
+LOCK_DIR_NAME = ".mission.lock"
+LOCK_WAIT_SECONDS = 5.0
+LOCK_STALE_SECONDS = 30.0
 
 KINDS_BLOCKER = ("credentials", "decision", "failure", "inconvenience")
 PHASES = ("discover", "design", "build", "verify", "ship", "done")
+
+# Keep a strong reference with each fingerprint so CPython cannot recycle a
+# loaded dict's id for an unrelated fresh state in a long-lived process. CLI
+# processes are short-lived, so this bounded provenance cache is tiny in
+# normal use. It is deliberately not serialized into mission/checkpoint data.
+_LOADED_FINGERPRINTS: dict[int, tuple[dict, str]] = {}
 
 
 class StateError(Exception):
@@ -51,14 +63,14 @@ def empty_state(goal: str, why: str = "", mission_id: str | None = None) -> dict
             "phase": "discover",
             "release": "",
         },
-        "criteria": [],       # {id, text, required, evidence:[], blocked_reason}
-        "workstreams": [],    # {id, title, impact, effort, status, depends_on, notes}
-        "defects": [],        # {id, title, severity, status, fix}
-        "blockers": [],       # {id, kind, title, attempts, blocks, resolved}
-        "evidence": [],       # {id, criterion, kind, command, exit, summary, commit, files, captured_at, verified}
-        "decisions": [],      # {id, context, options, choice, reason, consequences, revisit_when}
-        "regressions": [],    # {id, defect, cause, fix, test, area}
-        "checkpoints": [],    # {n, file, commit, created_at, note}
+        "criteria": [],
+        "workstreams": [],
+        "defects": [],
+        "blockers": [],
+        "evidence": [],
+        "decisions": [],
+        "regressions": [],
+        "checkpoints": [],
         "deploy": {"target": "", "state": "unknown", "url": "", "last_checked_at": ""},
         "next_hint": "",
     }
@@ -137,7 +149,6 @@ def migrate(state: dict) -> tuple[dict, list[str]]:
             "upgrade Aegis instead of downgrading state"
         )
     if schema < 1:
-        # v0 was never shipped; treat as v1 with defaults for missing keys.
         base = empty_state(str(state.get("mission", {}).get("goal", "imported mission")))
         merged = {**base, **state}
         merged["schema"] = SCHEMA_VERSION
@@ -157,11 +168,21 @@ def state_path(project: Path) -> Path:
     return state_dir(project) / STATE_FILE_NAME
 
 
-def load(project: Path, migrate_on_load: bool = True) -> tuple[dict, list[str]]:
-    """Load and validate state. Returns (state, notes).
+def _fingerprint_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
-    Raises StateError with recovery guidance on corruption.
-    """
+
+def _disk_fingerprint(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    try:
+        return _fingerprint_bytes(path.read_bytes())
+    except OSError as exc:
+        raise StateError(f"cannot read current mission state before write: {exc}") from exc
+
+
+def load(project: Path, migrate_on_load: bool = True) -> tuple[dict, list[str]]:
+    """Load and validate state. Returns (state, notes)."""
     path = state_path(project)
     if path.is_symlink():
         raise StateError(f"{path} is a symlink; refusing to read it (possible attack)")
@@ -174,8 +195,9 @@ def load(project: Path, migrate_on_load: bool = True) -> tuple[dict, list[str]]:
             "inspect it manually, then archive or trim aegis/"
         )
     try:
-        raw = path.read_text(encoding="utf-8")
-    except OSError as exc:
+        raw_bytes = path.read_bytes()
+        raw = raw_bytes.decode("utf-8")
+    except (OSError, UnicodeError) as exc:
         raise StateError(f"cannot read {path}: {exc}") from exc
     try:
         state = json.loads(raw)
@@ -192,11 +214,40 @@ def load(project: Path, migrate_on_load: bool = True) -> tuple[dict, list[str]]:
     problems = validate(state)
     if problems:
         raise StateError("state validation failed:\n  - " + "\n  - ".join(problems))
+    _LOADED_FINGERPRINTS[id(state)] = (state, _fingerprint_bytes(raw_bytes))
     return state, notes
 
 
+def _acquire_write_lock(sdir: Path) -> Path:
+    """Acquire a small cross-platform lock directory for compare-and-swap."""
+    lock = sdir / LOCK_DIR_NAME
+    deadline = time.monotonic() + LOCK_WAIT_SECONDS
+    while True:
+        if lock.is_symlink():
+            raise StateError(f"{lock} is a symlink; refusing write lock (possible attack)")
+        try:
+            os.mkdir(lock)
+            return lock
+        except FileExistsError:
+            try:
+                age = time.time() - lock.stat().st_mtime
+            except OSError:
+                age = 0
+            if age > LOCK_STALE_SECONDS and lock.is_dir() and not lock.is_symlink():
+                try:
+                    os.rmdir(lock)
+                    continue
+                except OSError:
+                    pass
+            if time.monotonic() >= deadline:
+                raise StateError("cannot write mission state: timed out waiting for another writer; reload and retry")
+            time.sleep(0.05)
+        except OSError as exc:
+            raise StateError(f"cannot write mission state (lock {lock}): {exc}") from exc
+
+
 def save(project: Path, state: dict) -> None:
-    """Atomically persist state; keep a .bak of the previous good copy."""
+    """Atomically persist state; reject stale snapshots returned by load()."""
     problems = validate(state)
     if problems:
         raise StateError("refusing to save invalid state:\n  - " + "\n  - ".join(problems))
@@ -204,14 +255,24 @@ def save(project: Path, state: dict) -> None:
     if sdir.is_symlink():
         raise StateError(f"{sdir} is a symlink; refusing to write (possible attack)")
     sdir.mkdir(parents=True, exist_ok=True)
-    path = state_path(project)
-    if path.is_symlink():
-        raise StateError(f"{path} is a symlink; refusing to overwrite (possible attack)")
-    payload = json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    if len(payload.encode("utf-8")) > MAX_STATE_BYTES:
-        raise StateError("state exceeds size limit; archive old checkpoints/evidence first")
+    lock = _acquire_write_lock(sdir)
     tmp_name = None
     try:
+        path = state_path(project)
+        if path.is_symlink():
+            raise StateError(f"{path} is a symlink; refusing to overwrite (possible attack)")
+        loaded = _LOADED_FINGERPRINTS.get(id(state))
+        expected = loaded[1] if loaded is not None and loaded[0] is state else None
+        current = _disk_fingerprint(path)
+        if expected is not None and current != expected:
+            raise StateError(
+                "mission state changed concurrently since it was loaded; "
+                "reload and retry instead of overwriting newer work"
+            )
+        payload = json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        payload_bytes = payload.encode("utf-8")
+        if len(payload_bytes) > MAX_STATE_BYTES:
+            raise StateError("state exceeds size limit; archive old checkpoints/evidence first")
         fd, tmp_name = tempfile.mkstemp(dir=sdir, prefix=".mission-", suffix=".tmp")
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(payload)
@@ -220,17 +281,17 @@ def save(project: Path, state: dict) -> None:
         if path.exists():
             shutil.copyfile(path, path.with_suffix(".json.bak"))
         os.replace(tmp_name, path)
+        tmp_name = None
+        _LOADED_FINGERPRINTS[id(state)] = (state, _fingerprint_bytes(payload_bytes))
     except OSError as exc:
+        raise StateError(f"cannot write {state_path(project)}: {exc}") from exc
+    finally:
         if tmp_name:
             try:
                 os.unlink(tmp_name)
             except OSError:
                 pass
-        raise StateError(f"cannot write {path}: {exc}") from exc
-    except BaseException:
-        if tmp_name:
-            try:
-                os.unlink(tmp_name)
-            except OSError:
-                pass
-        raise
+        try:
+            os.rmdir(lock)
+        except OSError:
+            pass
