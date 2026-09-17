@@ -49,12 +49,24 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue((self.target / "usage-optimizer" / "SKILL.md").is_file())
         self.assertTrue((self.engine / "aegis.py").is_file())
         self.assertIn("verified: installed router answers correctly", first.stdout)
+        self.assertIn("verified: installed mission engine starts correctly", first.stdout)
 
         second = self.run_installer()
         self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
         self.assertIn("already installed", second.stdout)
         self.assertEqual(self.backups_for(self.target / "usage-optimizer"), [])
         self.assertEqual(self.backups_for(self.engine), [])
+
+    def test_engine_smoke_runs_from_path_with_spaces(self) -> None:
+        result = self.run_installer("--only", "five-year-old", smoke=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("verified: installed mission engine starts correctly", result.stdout)
+        help_result = subprocess.run(
+            [sys.executable, str(self.engine / "aegis.py"), "--help"],
+            cwd=str(self.engine), capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(help_result.returncode, 0, help_result.stdout + help_result.stderr)
+        self.assertIn("persistent execution layer", help_result.stdout)
 
     def test_upgrade_backs_up_differing_copy(self) -> None:
         first = self.run_installer()
